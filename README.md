@@ -8,14 +8,9 @@ A SwiftUI iOS app combining productivity, mood‐tracking, and task management:
 - **Flow**: A circular Pomodoro-style timer (Go/Break cycles) with configurable durations, haptics, and notifications.  
 - **Calendar**: A year-at-a-glance mood tracker—rate each day on a 7-point scale, mark one Best day and one Worst day per year.
 
----
-
 ## Requirements
 
 - **iOS 16.1+** deployment target  (Realistically, none for now, working on publishing)
-
-
----
 
 ## Getting Started
 - **hang out!** this isn't published just yet but it'll get there!
