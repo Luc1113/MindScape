@@ -8,31 +8,6 @@ struct TodoItem: Identifiable, Codable, Equatable {
     var isComplete: Bool
 }
 
-// MARK: — FluidProgressBar
-
-/// A simple left-to-right filling bar with smooth animation
-struct FluidProgressBar: View {
-    /// 0…1 fill fraction
-    var progress: CGFloat
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                // Background track
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.2))
-
-                // Fill
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.blue)
-                    .frame(width: geo.size.width * progress)
-                    .animation(.easeInOut(duration: 0.6), value: progress)
-            }
-        }
-        .frame(height: 20)
-    }
-}
-
 // MARK: — MindscapesView
 
 struct MindscapesView: View {

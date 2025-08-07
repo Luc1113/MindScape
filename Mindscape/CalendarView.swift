@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: — CalendarView
+// MARK: - CalendarView
 
 struct CalendarView: View {
     // MARK: State
@@ -39,26 +39,23 @@ struct CalendarView: View {
             .padding(.bottom)
         }
         // Rating sheet
-        .sheet(item: $selectedDate) { identifiable in
+        .sheet(item: $selectedDate) { (identifiable: IdentifiableDate) in
             RatingSliderSheet(
                 date: identifiable.date,
                 rating: Binding(
                     get: { dailyRatings[identifiable.date] ?? 3 },
                     set: { newValue in
-                        // overwrite previous best/worst
                         if newValue == 15, let prev = bestDay, prev != identifiable.date {
                             dailyRatings[prev] = 6
                         }
                         if newValue == -15, let prev = worstDay, prev != identifiable.date {
                             dailyRatings[prev] = 0
                         }
-                        // assign new special
                         if newValue == 15 {
                             bestDay = identifiable.date
                         } else if newValue == -15 {
                             worstDay = identifiable.date
                         }
-                        // store the rating
                         dailyRatings[identifiable.date] = newValue
                     }
                 ),
@@ -68,12 +65,12 @@ struct CalendarView: View {
             )
         }
         .onAppear(perform: loadAll)
-        .onChange(of: selectedYear) {               // new zero-arg style
+        .onChange(of: selectedYear) {
             loadAll()
         }
     }
 
-    // MARK: — Helpers
+    // MARK: - Helpers
 
     private var monthsInYear: [Date] {
         let cal = Calendar.current
@@ -82,18 +79,15 @@ struct CalendarView: View {
     }
 
     private func saveAll() {
-        // Persist dailyRatings
         let dict = dailyRatings.mapKeys { $0.ISO8601Format() }
         if let data = try? JSONEncoder().encode(dict) {
             UserDefaults.standard.set(data, forKey: "dailyRatings")
         }
-        // Persist this year's best/worst
         UserDefaults.standard.set(bestDay?.ISO8601Format(), forKey: "bestDay\(selectedYear)")
         UserDefaults.standard.set(worstDay?.ISO8601Format(), forKey: "worstDay\(selectedYear)")
     }
 
     private func loadAll() {
-        // Load dailyRatings
         if let data = UserDefaults.standard.data(forKey: "dailyRatings"),
            let dict = try? JSONDecoder().decode([String: Int].self, from: data) {
             dailyRatings = dict.reduce(into: [Date: Int]()) { res, kv in
@@ -102,14 +96,12 @@ struct CalendarView: View {
                 }
             }
         }
-        // Load this year's bestDay
         if let str = UserDefaults.standard.string(forKey: "bestDay\(selectedYear)"),
            let d = ISO8601DateFormatter().date(from: str) {
             bestDay = d
         } else {
             bestDay = nil
         }
-        // Load this year's worstDay
         if let str = UserDefaults.standard.string(forKey: "worstDay\(selectedYear)"),
            let d = ISO8601DateFormatter().date(from: str) {
             worstDay = d
@@ -120,7 +112,7 @@ struct CalendarView: View {
 }
 
 
-// MARK: — YearPicker
+// MARK: - YearPicker
 
 struct YearPicker: View {
     @Binding var selectedYear: Int
@@ -148,7 +140,7 @@ struct YearPicker: View {
 }
 
 
-// MARK: — MonthView
+// MARK: - MonthView
 
 struct MonthView: View {
     let month: Date
@@ -201,7 +193,7 @@ struct MonthView: View {
 }
 
 
-// MARK: — CalendarCell
+// MARK: - CalendarCell
 
 struct CalendarCell: View {
     let day: Date
@@ -240,7 +232,7 @@ struct CalendarCell: View {
 }
 
 
-// MARK: — RatingSliderSheet
+// MARK: - RatingSliderSheet
 
 struct RatingSliderSheet: View {
     let date: Date
@@ -262,7 +254,6 @@ struct RatingSliderSheet: View {
                     get: { Double(rating) },
                     set: { new in
                         rating = Int(new)
-                        // sliding away from 15/-15 clears special
                         if rating != 15, bestDay == date { bestDay = nil }
                         if rating != -15, worstDay == date { worstDay = nil }
                     }
@@ -279,7 +270,6 @@ struct RatingSliderSheet: View {
 
             HStack(spacing: 16) {
                 Button("⭐ Best Day") {
-                    // set rating to 15 to invoke parent binding logic
                     rating = 15
                     onSave(); dismiss()
                 }
@@ -295,7 +285,6 @@ struct RatingSliderSheet: View {
             }
 
             Button("Done") {
-                // force default=3 if untouched
                 rating = rating
                 onSave()
                 dismiss()
@@ -324,17 +313,9 @@ struct RatingSliderSheet: View {
     }
 }
 
-
-// MARK: — Utilities
-
-/// Wraps a `Date` so it can drive `.sheet(item:)`
-struct IdentifiableDate: Identifiable {
-    let id = UUID()
-    let date: Date
-}
+// MARK: - Utilities
 
 fileprivate extension Dictionary {
-    /// Remap dictionary keys
     func mapKeys<T: Hashable>(_ transform: (Key) -> T) -> [T: Value] {
         reduce(into: [T: Value]()) { res, entry in
             res[transform(entry.key)] = entry.value

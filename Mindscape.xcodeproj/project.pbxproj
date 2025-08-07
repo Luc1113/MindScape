@@ -29,9 +29,22 @@
 		8189FC982E009A1A00A71466 /* MindscapeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MindscapeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8100082D2E43D90500E1A0C6 /* Exceptions for "Mindscape" folder in "Mindscape" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8189FC7D2E009A1600A71466 /* Mindscape */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8189FC802E009A1600A71466 /* Mindscape */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8100082D2E43D90500E1A0C6 /* Exceptions for "Mindscape" folder in "Mindscape" target */,
+			);
 			path = Mindscape;
 			sourceTree = "<group>";
 		};
@@ -397,8 +410,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Mindscape/Preview Content\"";
 				DEVELOPMENT_TEAM = L934G8AD57;
+				DONT_GENERATE_INFOPLIST_FILE = NO;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/Mindscape/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -426,8 +441,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Mindscape/Preview Content\"";
 				DEVELOPMENT_TEAM = L934G8AD57;
+				DONT_GENERATE_INFOPLIST_FILE = NO;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/Mindscape/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

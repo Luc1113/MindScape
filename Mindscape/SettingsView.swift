@@ -7,6 +7,7 @@ extension Notification.Name {
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
+    @AppStorage(userNameKey) private var userName: String = ""
     
     // Calendar reset state
     @State private var showResetCalendar = false
@@ -24,6 +25,11 @@ struct SettingsView: View {
                 } label: {
                     Text("Reset All Calendar Ratings")
                 }
+            }
+            
+            //Name Section
+            Section(header: Text("Profile")) {
+                TextField("Your Name", text: $userName)
             }
             
             // Todos section
