@@ -8,6 +8,10 @@ A SwiftUI iOS app combining productivity, mood‐tracking, and task management:
 - **Flow**: A circular Pomodoro-style timer (Go/Break cycles) with configurable durations, haptics, and notifications.  
 - **Calendar**: A year-at-a-glance mood tracker—rate each day on a 7-point scale, mark one Best day and one Worst day per year.
 
+## Preview
+
+![Mindscape preview](Mindscape/images/preview.jpeg)
+
 ## Requirements
 
 - **iOS 16.1+** deployment target  (Realistically, none for now, working on publishing)
@@ -16,8 +20,5 @@ A SwiftUI iOS app combining productivity, mood‐tracking, and task management:
 - **hang out!** this isn't published just yet but it'll get there!
 
 ## Misc
-
-- how does one put screenshots in a readme ;-;
-- I will figure this out in a second, until then I'm a crazy person talking to myself in my own `.md` file.
-- :)
+- Nothing at the moment, thanks for stopping by! :)
 - © 2025 Luca DiGrigoli
