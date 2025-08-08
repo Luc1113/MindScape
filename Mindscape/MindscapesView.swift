@@ -40,28 +40,28 @@ struct MindscapesView: View {
                         }
                     }
                 }
+
+                // Fluid fill progress bar
+                FluidProgressBar(progress: CGFloat(completedCount) / CGFloat(max(goal, 1)))
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                // Textual progress
+                Text("\(completedCount) of \(goal) done")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 12)
             }
-
-            // Fluid fill progress bar
-            FluidProgressBar(progress: CGFloat(completedCount) / CGFloat(max(goal, 1)))
-                .padding(.horizontal)
-                .padding(.top, 8)
-
-            // Textual progress
-            Text("\(completedCount) of \(goal) done")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.bottom, 12)
+            // Persist changes whenever items change
+            .onChange(of: items) { _ in
+                Self.saveItems(items)
+            }
+            // Listen for the reset notification to clear in-memory list
+            .onReceive(NotificationCenter.default.publisher(for: .todosReset)) { _ in
+                items = []
+            }
+            .navigationTitle("Mindscapes")
         }
-        // Persist changes whenever items change
-        .onChange(of: items) { _ in
-            Self.saveItems(items)
-        }
-        // Listen for the reset notification to clear in-memory list
-        .onReceive(NotificationCenter.default.publisher(for: .todosReset)) { _ in
-            items = []
-        }
-        .navigationTitle("Mindscapes")
     }
 
     // MARK: — Computed

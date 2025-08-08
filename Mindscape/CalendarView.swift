@@ -12,31 +12,42 @@ struct CalendarView: View {
     @State private var selectedDate: IdentifiableDate?
 
     var body: some View {
-        ScrollView {
-            // Year header as tappable button (no commas)
-            Button(action: { showYearPicker = true }) {
-                Text(String(selectedYear))
-                    .font(.largeTitle).bold()
-            }
-            .sheet(isPresented: $showYearPicker, onDismiss: loadAll) {
-                YearPicker(selectedYear: $selectedYear)
-            }
-            .padding(.top)
-
-            // All 12 months
+        ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                ForEach(monthsInYear, id: \.self) { month in
-                    MonthView(
-                        month: month,
-                        dailyRatings: dailyRatings,
-                        bestDay: bestDay,
-                        worstDay: worstDay
-                    ) { date in
-                        selectedDate = IdentifiableDate(date: date)
+                // Year header as tappable button (no commas)
+                Button(action: { showYearPicker = true }) {
+                    Text(String(selectedYear))
+                        .font(.largeTitle)
+                        .bold()
+                        .foregroundColor(.white)
+                }
+                .sheet(isPresented: $showYearPicker, onDismiss: loadAll) {
+                    YearPicker(selectedYear: $selectedYear)
+                }
+                .padding(.top)
+
+                // All 12 months
+                LazyVStack(spacing: 32) {
+                    ForEach(monthsInYear, id: \.self) { month in
+                        VStack(alignment: .leading, spacing: 16) {
+                            MonthView(
+                                month: month,
+                                dailyRatings: dailyRatings,
+                                bestDay: bestDay,
+                                worstDay: worstDay
+                            ) { date in
+                                selectedDate = IdentifiableDate(date: date)
+                            }
+                        }
+                        .padding()
+                        .background(.ultraThinMaterial.opacity(0.9))
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
+                        .padding(.horizontal)
                     }
                 }
+                .padding(.bottom, 100)
             }
-            .padding(.bottom)
         }
         // Rating sheet
         .sheet(item: $selectedDate) { (identifiable: IdentifiableDate) in
@@ -155,6 +166,7 @@ struct MonthView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(monthFormatter.string(from: month))
                 .font(.headline)
+                .foregroundColor(.primary)
             Text("Avg: \(monthAverage(month))")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -171,7 +183,6 @@ struct MonthView: View {
                 }
             }
         }
-        .padding(.horizontal)
     }
 
     private func daysInMonth(_ month: Date) -> [Date] {
@@ -227,7 +238,7 @@ struct CalendarCell: View {
             Color(red: 0.60, green: 0.84, blue: 0.56),
             Color(red: 0.38, green: 0.75, blue: 0.40)
         ]
-        return palette[r]
+        return r >= 0 && r < palette.count ? palette[r] : Color.gray
     }
 }
 
@@ -253,7 +264,7 @@ struct RatingSliderSheet: View {
                 value: Binding(
                     get: { Double(rating) },
                     set: { new in
-                        rating = Int(new)
+                        rating = Int(round(new))
                         if rating != 15, bestDay == date { bestDay = nil }
                         if rating != -15, worstDay == date { worstDay = nil }
                     }

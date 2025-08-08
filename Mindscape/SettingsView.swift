@@ -20,10 +20,11 @@ struct SettingsView: View {
         Form {
             // Calendar section
             Section(header: Text("Calendar")) {
+                let headerText = Text("Reset All Calendar Ratings")
                 Button(role: .destructive) {
                     showResetCalendar = true
                 } label: {
-                    Text("Reset All Calendar Ratings")
+                    headerText
                 }
             }
             

@@ -1,7 +1,11 @@
+//
+//  DashboardView.swift
+//  Mindscape
+//
+
 import SwiftUI
 import UIKit
 import CoreLocation
-import WeatherKit
 
 struct DashboardView: View {
     // MARK: - Name stuff
@@ -21,173 +25,321 @@ struct DashboardView: View {
     // MARK: - Weather
     @StateObject private var weatherVM = WeatherViewModel()
 
-    // MARK: - Safe Area Inset
-    private var safeAreaTop: CGFloat {
-        UIApplication.shared.windows.first?.safeAreaInsets.top ?? 0
+    // MARK: - AI Service (HF-backed)
+    @StateObject private var aiService = AIService()
+    @State private var isChatExpanded: Bool = false
+    @State private var newChatMessage: String = ""
+
+    // Greeting
+    private var greetingText: String {
+        greeting + (userName.isEmpty ? "" : ", \(userName)")
     }
 
-    var bdy: some View {
+    var body: some View {
         ZStack {
-            // — Gradient Background —
-            ZStack {
-                Color(red: 0.06, green: 0.09, blue: 0.16)
-                RadialGradient(
-                    colors: [Color(red: 0.082, green: 0.082, blue: 0.149), Color.clear],
-                    center: UnitPoint(x: 0.4, y: 0.2), startRadius: 0, endRadius: 200
-                )
-                RadialGradient(
-                    colors: [Color(red: 0.110, green: 0.125, blue: 0.200), Color.clear],
-                    center: UnitPoint(x: 0.8, y: 0.0), startRadius: 0, endRadius: 180
-                )
-                RadialGradient(
-                    colors: [Color(red: 0.067, green: 0.067, blue: 0.122), Color.clear],
-                    center: UnitPoint(x: 0.0, y: 0.5), startRadius: 0, endRadius: 160
-                )
-                RadialGradient(
-                    colors: [Color(red: 0.098, green: 0.098, blue: 0.180), Color.clear],
-                    center: UnitPoint(x: 0.8, y: 0.5), startRadius: 0, endRadius: 190
-                )
-                RadialGradient(
-                    colors: [Color(red: 0.086, green: 0.098, blue: 0.161), Color.clear],
-                    center: UnitPoint(x: 0.0, y: 1.0), startRadius: 0, endRadius: 170
-                )
-                RadialGradient(
-                    colors: [Color(red: 0.075, green: 0.075, blue: 0.141), Color.clear],
-                    center: UnitPoint(x: 0.8, y: 1.0), startRadius: 0, endRadius: 185
-                )
-                RadialGradient(
-                    colors: [Color(red: 0.051, green: 0.051, blue: 0.102), Color.clear],
-                    center: UnitPoint(x: 0.0, y: 0.0), startRadius: 0, endRadius: 150
-                )
-            }
-            .ignoresSafeArea(.all)
-
-            // — Main Scroll Content —
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
-                    // Header & Weather
+                LazyVStack(alignment: .leading, spacing: 24) {
+
+                    // ── Header & Weather ─────────────────────────────────────────────
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("\(greeting)\(userName.isEmpty ? "" : ", \(userName)")")
+                            Text(greetingText)
                                 .font(.custom("BebasNeue-Regular", size: 42))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
+                                .foregroundColor(.white)
                             Spacer()
                             NavigationLink(destination: SettingsView()) {
-                                Image(systemName: "gearshape").imageScale(.large)
+                                Image(systemName: "gearshape")
+                                    .imageScale(.large)
+                                    .foregroundColor(.white)
                             }
                         }
-                        HStack {
+                        HStack(spacing: 12) {
                             Text("Today's Weather:")
+                                .foregroundColor(.white.opacity(0.9))
+
                             if weatherVM.fetchFailed {
-                                Label("Unavailable :(", systemImage: "cloud.slash")
+                                Label("Unavailable :(", systemImage: "icloud.slash")
                                     .foregroundColor(.secondary)
-                            } else if let temp = weatherVM.temperature,
-                                      let icon = weatherVM.symbolName {
-                                Label("\(temp)°", systemImage: icon)
+                            } else if let temp = weatherVM.temperature {
+                                let icon = weatherVM.symbolName ?? "cloud.fill"
+                                let safeIcon = UIImage(systemName: icon) != nil ? icon : "cloud.fill"
+                                let accent = weatherAccentColor(condition: weatherVM.conditionText, symbol: safeIcon)
+
+                                HStack(spacing: 10) {
+                                    Image(systemName: safeIcon)
+                                        .symbolRenderingMode(.palette)
+                                        .foregroundStyle(accent, .white.opacity(0.85))
+                                        .font(.system(size: 28, weight: .medium))
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("\(temp)°")
+                                            .font(.headline)
+                                            .foregroundColor(.white.opacity(0.95))
+
+                                        HStack(spacing: 6) {
+                                            Text(weatherVM.conditionText.isEmpty ? "…" : weatherVM.conditionText)
+                                            if let wind = weatherVM.windMph {
+                                                Text("• Wind \(wind) mph")
+                                            }
+                                        }
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.8))
+                                        .lineLimit(1)
+                                    }
+                                }
                             } else {
                                 ProgressView()
+                                    .tint(.white.opacity(0.9))
                             }
+
                             Spacer()
+
                             Text(dateFormatter.string(from: Date()))
                                 .foregroundColor(.secondary)
                         }
                         .font(.body)
                     }
                     .padding(.horizontal)
+                    .padding(.top)
 
-                    // Today's Rating Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Today's Rating").font(.headline)
+                    // ── Today's Rating Card ──────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack {
+                            Text("Today's Rating").font(.headline)
+                            Spacer()
                             Button {
                                 let today = Calendar.current.startOfDay(for: Date())
                                 selectedDate = IdentifiableDate(date: today)
                             } label: {
-                                Text(todayRating != nil ? ratingLabel(todayRating!) : "Good")
-                                    .font(.body)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(todayRating != nil ? colorForRating(todayRating) : Color.blue)
-                                    .cornerRadius(8)
-                                    .foregroundColor(.white)
+                                HStack(spacing: 4) {
+                                    Text(todayRating != nil ? ratingLabel(todayRating!) : "Rate Today")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(todayRating != nil ? colorForRating(todayRating).opacity(0.8) : Color.blue.opacity(0.8))
+                                .cornerRadius(16)
+                                .foregroundColor(.white)
                             }
-                            Text("Tap to update")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
                         }
+
+                        // Mini mood graph using week data
+                        WeekProgressBar()
+                            .frame(height: 28)
+                            .padding(.top, 4)
                     }
                     .padding()
-                    .background(.ultraThinMaterial.opacity(0.9))
+                    .background(.ultraThinMaterial.opacity(0.8).blendMode(.overlay))
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
                     .padding(.horizontal)
 
-                    // To-Do Section
+                    // ── To-Do Section ───────────────────────────────────────────────
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("To-Do").font(.headline)
+                        HStack {
+                            Text("To-Do").font(.headline)
+                            Spacer()
+                            Text("\(completedTodoCount)/\(todoGoal)")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+
+                        // Input field for new items
                         HStack {
                             TextField("New item…", text: $newItemTitle)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .onSubmit { addNewItem() }
                             Button(action: addNewItem) {
-                                Image(systemName: "plus.circle.fill").imageScale(.medium).foregroundColor(.blue)
+                                Image(systemName: "plus.circle.fill")
+                                    .imageScale(.medium)
+                                    .foregroundColor(.blue)
                             }
                             .disabled(newItemTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
-                        VStack(alignment: .leading, spacing: 6) {
+
+                        // Progress bar
+                        FluidProgressBar(progress: CGFloat(completedTodoCount) / CGFloat(max(todoGoal, 1)))
+                            .frame(height: 10)
+                            .padding(.vertical, 4)
+
+                        // Todo items with swipeable cards
+                        VStack(alignment: .leading, spacing: 8) {
                             ForEach(todoItems.prefix(5)) { item in
+                                TodoItemCard(item: item, onToggle: toggleTodo, onDelete: deleteTodo)
+                            }
+
+                            if todoItems.count > 5 {
+                                Text("+ \(todoItems.count - 5) more")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 4)
+                            }
+
+                            if todoItems.isEmpty {
                                 HStack {
-                                    Image(systemName: item.isComplete ? "checkmark.square.fill" : "square")
-                                        .foregroundColor(item.isComplete ? .green : .gray)
-                                    Text(item.title)
-                                        .strikethrough(item.isComplete)
-                                        .lineLimit(1)
-                                        .font(.body)
+                                    Spacer()
+                                    Text("No todos yet")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .italic()
+                                        .padding(.vertical, 12)
                                     Spacer()
                                 }
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                        toggleTodo(item)
-                                    }
-                                }
-                            }
-                            if todoItems.count > 5 {
-                                Text("+ \(todoItems.count - 5) more").font(.caption2).foregroundColor(.secondary)
-                            }
-                            if todoItems.isEmpty {
-                                Text("No todos yet").font(.caption).foregroundColor(.secondary).italic()
                             }
                         }
-                        FluidProgressBar(progress: CGFloat(completedTodoCount) / CGFloat(max(todoGoal, 1)))
-                        Text("Done: \(completedTodoCount)/\(todoGoal)").font(.caption).foregroundColor(.secondary)
                     }
                     .padding()
-                    .background(.ultraThinMaterial.opacity(0.9))
+                    .background(.ultraThinMaterial.opacity(0.8).blendMode(.overlay))
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
                     .padding(.horizontal)
 
-                    // This Week Progress
+                    // ── AI Motivational Message & Chat (HF) ─────────────────────────
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("This Week").font(.headline)
-                        WeekProgressBar()
+                        HStack {
+                            Image(systemName: "brain.head.profile")
+                                .foregroundColor(.purple)
+                                .font(.title2)
+                            Text("AI Coach")
+                                .font(.headline)
+                            Spacer()
+                            if aiService.isLoading {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .tint(.purple)
+                            } else {
+                                Button(action: refreshMotivationalMessage) {
+                                    Image(systemName: "arrow.clockwise")
+                                        .foregroundColor(.purple)
+                                        .font(.caption)
+                                }
+                                .accessibilityLabel("Refresh AI message")
+                            }
+                        }
+
+                        // Optional hint if HF is loading / errors (e.g., 503)
+                        if aiService.hasError {
+                            Text("The AI might be spinning up. Try again in a few seconds.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(aiService.motivationalMessage)
+                            .font(.body)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .animation(.easeInOut(duration: 0.3), value: aiService.motivationalMessage)
+
+                        // Chat toggle
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isChatExpanded.toggle()
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "message.fill").font(.caption)
+                                Text(isChatExpanded ? "Hide Chat" : "Chat with AI")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(.caption2)
+                                    .rotationEffect(.degrees(isChatExpanded ? 180 : 0))
+                                    .animation(.easeInOut(duration: 0.3), value: isChatExpanded)
+                            }
+                            .foregroundColor(.purple)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.purple.opacity(0.1))
+                            .cornerRadius(16)
+                        }
+
+                        // Expandable Chat
+                        if isChatExpanded {
+                            VStack(spacing: 12) {
+                                // Messages
+                                ScrollViewReader { proxy in
+                                    ScrollView {
+                                        LazyVStack(spacing: 8) {
+                                            if aiService.chatMessages.isEmpty {
+                                                Text("Start a conversation with your AI coach!")
+                                                    .font(.caption)
+                                                    .foregroundColor(.secondary)
+                                                    .italic()
+                                                    .padding(.vertical, 20)
+                                            } else {
+                                                ForEach(aiService.chatMessages) { message in
+                                                    ChatBubble(message: message)
+                                                        .id(message.id)
+                                                }
+                                            }
+
+                                            if aiService.isChatLoading {
+                                                HStack {
+                                                    ProgressView()
+                                                        .scaleEffect(0.8)
+                                                        .tint(.purple)
+                                                    Text("AI is typing...")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                    Spacer()
+                                                }
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 8)
+                                            }
+                                        }
+                                        .padding(.horizontal, 4)
+                                    }
+                                    .frame(maxHeight: 200)
+                                    .background(Color.gray.opacity(0.05))
+                                    .cornerRadius(12)
+                                    .onChange(of: aiService.chatMessages.count) { _, _ in
+                                        if let lastMessage = aiService.chatMessages.last {
+                                            withAnimation {
+                                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Input
+                                HStack {
+                                    TextField("Ask me anything...", text: $newChatMessage, axis: .vertical)
+                                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                                        .lineLimit(3)
+                                        .onSubmit { sendChatMessage() }
+
+                                    Button(action: sendChatMessage) {
+                                        Image(systemName: "paperplane.fill")
+                                            .foregroundColor(.purple)
+                                            .font(.system(size: 16))
+                                    }
+                                    .disabled(newChatMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || aiService.isChatLoading)
+                                }
+                            }
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                        }
                     }
                     .padding()
-                    .background(.ultraThinMaterial.opacity(0.9))
+                    .background(.ultraThinMaterial.opacity(0.8).blendMode(.overlay))
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
                     .padding(.horizontal)
 
-                    Spacer(minLength: 50)
+                    // Spacer
+                    Color.clear.frame(height: 100)
                 }
-                .padding(.top, safeAreaTop)  // Push content below notch
-                .frame(minHeight: UIScreen.main.bounds.height)
             }
         }
-        .navigationBarHidden(true) // Hide any nav bar background
-        // Modifiers inside body
+        .navigationBarHidden(true)
+
+        // ── Sheets ───────────────────────────────────────────────────────────────
         .sheet(item: $selectedDate) { identifiableDate in
             TodayRatingSheet(
                 date: identifiableDate.date,
@@ -214,6 +366,8 @@ struct DashboardView: View {
             }
             .padding()
         }
+
+        // ── On appear / data loads ──────────────────────────────────────────────
         .onAppear {
             if userName.trimmingCharacters(in: .whitespaces).isEmpty {
                 showNamePrompt = true
@@ -221,16 +375,38 @@ struct DashboardView: View {
             weatherVM.fetchWeather()
             loadCalendarData()
             loadTodoData()
+            aiService.testAPIConnection()     // now hits HF model endpoint
+            refreshMotivationalMessage()      // uses HF under the hood
         }
         .onReceive(NotificationCenter.default.publisher(for: .todosReset)) { _ in
             loadTodoData()
         }
-        .onChange(of: todoItems) { _ in
+        .onChange(of: todoItems) { _, _ in
             saveTodoData()
         }
     }
 
-    // MARK: - Helpers & Private
+    // MARK: - Helpers
+    
+    private func weatherAccentColor(condition: String, symbol: String) -> Color {
+        let c = condition.lowercased()
+        if c.contains("clear") { return .yellow }
+        if c.contains("partly") || c.contains("sun") { return .orange }
+        if c.contains("overcast") || c.contains("cloud") { return .gray }
+        if c.contains("fog") { return .mint }
+        if c.contains("drizzle") { return .teal }
+        if c.contains("rain") || c.contains("showers") { return .blue }
+        if c.contains("snow") { return .cyan }
+        if c.contains("thunder") { return .purple }
+        // fallback by symbol family if text is empty
+        if symbol.contains("bolt") { return .purple }
+        if symbol.contains("snow") { return .cyan }
+        if symbol.contains("rain") { return .blue }
+        if symbol.contains("sun") || symbol.contains("moon") { return .orange }
+        return .gray
+    }
+
+    
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
@@ -242,14 +418,16 @@ struct DashboardView: View {
 
     private func WeekProgressBar() -> some View {
         HStack(spacing: 4) {
-            ForEach(0..<7) { dayIndex in
+            ForEach(0..<7, id: \.self) { dayIndex in
                 let dayDate = Calendar.current.date(byAdding: .day, value: dayIndex - 6, to: Date()) ?? Date()
                 let rating = dailyRatings[Calendar.current.startOfDay(for: dayDate)]
+                let weekdaySymbol = Calendar.current.shortWeekdaySymbols[Calendar.current.component(.weekday, from: dayDate) - 1]
+
                 RoundedRectangle(cornerRadius: 6)
                     .fill(colorForRating(rating))
                     .frame(height: 24)
                     .overlay(
-                        Text(String(Calendar.current.component(.weekday, from: dayDate)).prefix(1))
+                        Text(String(weekdaySymbol.prefix(1)))
                             .font(.caption2)
                             .foregroundColor(.white)
                             .opacity(0.8)
@@ -269,7 +447,7 @@ struct DashboardView: View {
             Color(red: 0.60, green: 0.84, blue: 0.56),
             Color(red: 0.38, green: 0.75, blue: 0.40)
         ]
-        return r < palette.count ? palette[r] : Color.gray
+        return r >= 0 && r < palette.count ? palette[r] : Color.gray
     }
 
     private func ratingLabel(_ rating: Int) -> String {
@@ -285,14 +463,18 @@ struct DashboardView: View {
         }
     }
 
-    private var completedTodoCount: Int { todoItems.filter { $0.isComplete }.count }
+    private var completedTodoCount: Int {
+        todoItems.filter { $0.isComplete }.count
+    }
 
+    // MARK: - Persistence
     private func loadCalendarData() {
         if let data = UserDefaults.standard.data(forKey: "dailyRatings"),
            let dict = try? JSONDecoder().decode([String: Int].self, from: data) {
-            dailyRatings = dict.reduce(into: [:]) { res, kv in
-                if let d = ISO8601DateFormatter().date(from: kv.key) {
-                    res[d] = kv.value
+            let formatter = ISO8601DateFormatter()
+            dailyRatings = dict.reduce(into: [:]) { result, kv in
+                if let date = formatter.date(from: kv.key) {
+                    result[Calendar.current.startOfDay(for: date)] = kv.value
                 }
             }
         }
@@ -301,7 +483,10 @@ struct DashboardView: View {
     }
 
     private func saveCalendarData() {
-        let dict = dailyRatings.mapKeys { $0.ISO8601Format() }
+        let formatter = ISO8601DateFormatter()
+        let dict = dailyRatings.reduce(into: [String: Int]()) { result, kv in
+            result[formatter.string(from: kv.key)] = kv.value
+        }
         if let data = try? JSONEncoder().encode(dict) {
             UserDefaults.standard.set(data, forKey: "dailyRatings")
         }
@@ -322,6 +507,7 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - Actions
     private func addNewItem() {
         let title = newItemTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
@@ -334,6 +520,36 @@ struct DashboardView: View {
         todoItems[idx].isComplete.toggle()
     }
 
+    private func deleteTodo(_ item: TodoItem) {
+        guard let idx = todoItems.firstIndex(of: item) else { return }
+        withAnimation {
+            _ = todoItems.remove(at: idx)
+        }
+    }
+
+    private func refreshMotivationalMessage() {
+        aiService.fetchMotivationalMessage(
+            todayRating: todayRating,
+            completedTodos: completedTodoCount,
+            totalTodos: todoGoal
+        )
+    }
+
+    private func sendChatMessage() {
+        let message = newChatMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !message.isEmpty else { return }
+
+        aiService.sendChatMessage(
+            message,
+            todayRating: todayRating,
+            completedTodos: completedTodoCount,
+            totalTodos: todoGoal
+        )
+
+        newChatMessage = ""
+    }
+
+    // MARK: - Date formatting
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "M/d/yy"
@@ -344,14 +560,15 @@ struct DashboardView: View {
 // MARK: — FluidProgressBar
 struct FluidProgressBar: View {
     var progress: CGFloat
+
     var body: some View {
-        GeometryReader { geo in
+        GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.gray.opacity(0.2))
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.blue)
-                    .frame(width: geo.size.width * progress)
+                    .frame(width: max(0, min(geometry.size.width, geometry.size.width * progress)))
                     .animation(.easeInOut(duration: 0.6), value: progress)
             }
         }
@@ -375,23 +592,36 @@ struct TodayRatingSheet: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("Rate Today").font(.title2).bold()
-            Text(ratingLabel(rating)).font(.headline)
+
+            Text(ratingLabel(rating))
+                .font(.headline)
+                .foregroundColor(colorForRating(rating))
+
             Slider(
                 value: Binding(
                     get: { Double(rating) },
-                    set: { rating = Int($0) }
-                ), in: 0...6, step: 1
+                    set: { rating = Int(round($0)) }
+                ),
+                in: 0...6,
+                step: 1
             )
             .padding(.horizontal)
-            HStack { Text("Terrible"); Spacer(); Text("Awesome") }
-                .font(.caption2)
-                .padding(.horizontal)
+
+            HStack {
+                Text("Terrible")
+                Spacer()
+                Text("Awesome")
+            }
+            .font(.caption2)
+            .padding(.horizontal)
+
             Button("Done") {
                 onSave(rating)
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
             .padding(.top, 16)
+
             Spacer()
         }
         .padding()
@@ -409,13 +639,127 @@ struct TodayRatingSheet: View {
         default: return "Unknown"
         }
     }
+
+    private func colorForRating(_ rating: Int) -> Color {
+        let palette: [Color] = [
+            Color(red: 0.31, green: 0.18, blue: 0.45),
+            Color(red: 0.27, green: 0.36, blue: 0.70),
+            Color(red: 0.45, green: 0.61, blue: 0.86),
+            Color(red: 0.74, green: 0.72, blue: 0.86),
+            Color(red: 0.72, green: 0.91, blue: 0.74),
+            Color(red: 0.60, green: 0.84, blue: 0.56),
+            Color(red: 0.38, green: 0.75, blue: 0.40)
+        ]
+        return rating >= 0 && rating < palette.count ? palette[rating] : Color.gray
+    }
 }
 
-// MARK: — Dictionary Extension
-fileprivate extension Dictionary {
-    func mapKeys<T: Hashable>(_ transform: (Key) -> T) -> [T: Value] {
-        reduce(into: [:]) { res, entry in
-            res[transform(entry.key)] = entry.value
+// MARK: — TodoItemCard
+struct TodoItemCard: View {
+    var item: TodoItem
+    var onToggle: (TodoItem) -> Void
+    var onDelete: (TodoItem) -> Void
+
+    var body: some View {
+        HStack {
+            // Checkbox
+            Button(action: { onToggle(item) }) {
+                Image(systemName: item.isComplete ? "checkmark.square.fill" : "square")
+                    .foregroundColor(item.isComplete ? .green : .primary)
+                    .font(.system(size: 20))
+                    .frame(width: 32)
+            }
+            .buttonStyle(BorderlessButtonStyle())
+
+            // Title
+            Text(item.title)
+                .font(.body)
+                .foregroundColor(item.isComplete ? .secondary : .primary)
+                .strikethrough(item.isComplete)
+                .lineLimit(1)
+
+            Spacer()
+
+            // Delete
+            Button(action: { withAnimation { onDelete(item) } }) {
+                Image(systemName: "trash")
+                    .foregroundColor(.red.opacity(0.7))
+                    .font(.system(size: 16))
+            }
+            .buttonStyle(BorderlessButtonStyle())
         }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.1))
+        )
+        .cornerRadius(10)
+    }
+}
+
+// MARK: — ChatBubble
+struct ChatBubble: View {
+    var message: ChatMessage
+
+    var body: some View {
+        HStack {
+            if message.isUserMessage {
+                Spacer()
+                Text(message.text)
+                    .padding(12)
+                    .background(Color.blue.opacity(0.8), in: ChatBubbleShape(isUserMessage: true))
+                    .foregroundColor(.white)
+                    .font(.body)
+                    .frame(maxWidth: 300, alignment: .trailing)
+            } else {
+                Text(message.text)
+                    .padding(12)
+                    .background(Color.gray.opacity(0.2), in: ChatBubbleShape(isUserMessage: false))
+                    .foregroundColor(.primary)
+                    .font(.body)
+                    .frame(maxWidth: 300, alignment: .leading)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: — ChatBubbleShape
+struct ChatBubbleShape: Shape {
+    var isUserMessage: Bool
+
+    func path(in rect: CGRect) -> Path {
+        let radius: CGFloat = 16
+        let tailWidth: CGFloat = 10
+        let tailHeight: CGFloat = 20
+
+        var path = Path()
+
+        // Rounded rectangle
+        path.addRoundedRect(
+            in: rect,
+            cornerSize: CGSize(width: radius, height: radius),
+            style: .continuous
+        )
+
+        // Tail
+        if isUserMessage {
+            var tail = Path()
+            tail.move(to: CGPoint(x: rect.maxX - tailWidth, y: rect.midY))
+            tail.addLine(to: CGPoint(x: rect.maxX, y: rect.midY - tailHeight))
+            tail.addLine(to: CGPoint(x: rect.maxX, y: rect.midY + tailHeight))
+            path.addPath(tail)
+        } else {
+            var tail = Path()
+            tail.move(to: CGPoint(x: tailWidth, y: rect.midY))
+            tail.addLine(to: CGPoint(x: 0, y: rect.midY - tailHeight))
+            tail.addLine(to: CGPoint(x: 0, y: rect.midY + tailHeight))
+            path.addPath(tail)
+        }
+
+        return path
     }
 }
